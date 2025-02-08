@@ -1,0 +1,164 @@
+import math
+import tkinter as tk
+from tkinter import ttk
+
+def parse_percentage(input_str):
+    """
+    Convert an input string that may include a '%' into a decimal.
+    For example, '2.5%' or '2.5' will be converted to 0.025.
+    """
+    input_str = input_str.strip()
+    if input_str.endswith('%'):
+        input_str = input_str[:-1].strip()
+    return float(input_str) / 100
+
+def circle_area(radius_km):
+    """Calculate the area (in km²) of a circle given its radius in km."""
+    return math.pi * (radius_km ** 2)
+
+def average_density_range(min_pop, max_pop, min_area, max_area):
+    """
+    Compute the population density range (people per km²):
+      - low_density = min_pop / max_area (lowest density scenario)
+      - high_density = max_pop / min_area (highest density scenario)
+    """
+    low_density = min_pop / max_area
+    high_density = max_pop / min_area
+    return low_density, high_density
+
+def estimate_pop_range_for_radius(radius_km, low_density, high_density):
+    """
+    Estimate the current population range within a given radius.
+    Returns (pop_low, pop_high) based on the circle's area and density range.
+    """
+    area = circle_area(radius_km)
+    pop_low = area * low_density
+    pop_high = area * high_density
+    return pop_low, pop_high
+
+def compound_growth_range(pop_low, pop_high, min_rate, max_rate, years):
+    """
+    Apply compound annual growth to the population range.
+    Returns (future_low, future_high):
+      - future_low  = pop_low  * (1 + min_rate)^years
+      - future_high = pop_high * (1 + max_rate)^years
+    """
+    future_low = pop_low * ((1 + min_rate) ** years)
+    future_high = pop_high * ((1 + max_rate) ** years)
+    return future_low, future_high
+
+def calculate_population():
+    """
+    Retrieve input values from the UI, perform calculations,
+    and display current and projected population estimates.
+    Growth rate inputs can be entered with a '%' sign.
+    Only a single radius value (in km) is used.
+    """
+    try:
+        # Read and convert input values for population, area, and projection years
+        min_pop = float(entry_min_pop.get())
+        max_pop = float(entry_max_pop.get())
+        min_area = float(entry_min_area.get())
+        max_area = float(entry_max_area.get())
+        years = int(entry_years.get())
+        
+        # Parse growth rate inputs (handles inputs like "2.5%" or "2.5")
+        min_rate = parse_percentage(entry_min_rate.get())
+        max_rate = parse_percentage(entry_max_rate.get())
+        
+        # Parse the single radius value (in km)
+        radius = float(entry_radius.get())
+    except ValueError:
+        result_text.delete("1.0", tk.END)
+        result_text.insert(tk.END, "Please enter valid numeric values in all fields.")
+        return
+
+    # Calculate the density range (people per km²)
+    low_density, high_density = average_density_range(min_pop, max_pop, min_area, max_area)
+    
+    # Prepare the results output
+    output_lines = []
+    output_lines.append("Municipal Density Range: {:.2f} - {:.2f} people/km²".format(low_density, high_density))
+    output_lines.append("")
+    
+    pop_low, pop_high = estimate_pop_range_for_radius(radius, low_density, high_density)
+    fut_low, fut_high = compound_growth_range(pop_low, pop_high, min_rate, max_rate, years)
+    
+    output_lines.append("Radius: {} km".format(radius))
+    output_lines.append("  Current Population Range: {:,.0f} - {:,.0f}".format(pop_low, pop_high))
+    output_lines.append("  {}-Year Projection: {:,.0f} - {:,.0f}".format(years, fut_low, fut_high))
+    
+    # Display results in the text widget
+    result_text.delete("1.0", tk.END)
+    result_text.insert(tk.END, "\n".join(output_lines))
+
+# Create the main window
+root = tk.Tk()
+root.title("Radius-Based Population Calculator")
+
+# Create a frame for input fields with some padding
+frame_inputs = ttk.Frame(root, padding="10")
+frame_inputs.grid(row=0, column=0, sticky=(tk.W, tk.E))
+
+# Input Labels and Entry Fields
+
+# Minimum Municipal Population
+ttk.Label(frame_inputs, text="Min Municipal Population:").grid(row=0, column=0, sticky=tk.W)
+entry_min_pop = ttk.Entry(frame_inputs, width=15)
+entry_min_pop.grid(row=0, column=1)
+
+# Maximum Municipal Population
+ttk.Label(frame_inputs, text="Max Municipal Population:").grid(row=1, column=0, sticky=tk.W)
+entry_max_pop = ttk.Entry(frame_inputs, width=15)
+entry_max_pop.grid(row=1, column=1)
+
+# Minimum Municipal Area (km²)
+ttk.Label(frame_inputs, text="Min Municipal Area (km²):").grid(row=2, column=0, sticky=tk.W)
+entry_min_area = ttk.Entry(frame_inputs, width=15)
+entry_min_area.grid(row=2, column=1)
+
+# Maximum Municipal Area (km²)
+ttk.Label(frame_inputs, text="Max Municipal Area (km²):").grid(row=3, column=0, sticky=tk.W)
+entry_max_area = ttk.Entry(frame_inputs, width=15)
+entry_max_area.grid(row=3, column=1)
+
+# Minimum Growth Rate (user-friendly, e.g., "2.5%")
+ttk.Label(frame_inputs, text="Min Growth Rate (e.g., 2.5%):").grid(row=4, column=0, sticky=tk.W)
+entry_min_rate = ttk.Entry(frame_inputs, width=15)
+entry_min_rate.grid(row=4, column=1)
+
+# Maximum Growth Rate (user-friendly, e.g., "3%")
+ttk.Label(frame_inputs, text="Max Growth Rate (e.g., 3%):").grid(row=5, column=0, sticky=tk.W)
+entry_max_rate = ttk.Entry(frame_inputs, width=15)
+entry_max_rate.grid(row=5, column=1)
+
+# Projection Years
+ttk.Label(frame_inputs, text="Projection Years:").grid(row=6, column=0, sticky=tk.W)
+entry_years = ttk.Entry(frame_inputs, width=15)
+entry_years.grid(row=6, column=1)
+
+# Single Radius Input (in km)
+ttk.Label(frame_inputs, text="Radius (km):").grid(row=7, column=0, sticky=tk.W)
+entry_radius = ttk.Entry(frame_inputs, width=15)
+entry_radius.grid(row=7, column=1)
+
+# Pre-fill default values
+entry_min_pop.insert(0, "50000")
+entry_max_pop.insert(0, "55000")
+entry_min_area.insert(0, "680")
+entry_max_area.insert(0, "700")
+entry_min_rate.insert(0, "2.5%")
+entry_max_rate.insert(0, "3%")
+entry_years.insert(0, "")
+entry_radius.insert(0, "")  # Default radius: 3 km
+
+# Button to trigger the calculation
+btn_calculate = ttk.Button(root, text="Calculate Population", command=calculate_population)
+btn_calculate.grid(row=1, column=0, pady=10)
+
+# Text widget to display results
+result_text = tk.Text(root, width=60, height=15, wrap="word")
+result_text.grid(row=2, column=0, padx=10, pady=10)
+
+# Start the Tkinter event loop
+root.mainloop()
